@@ -1,0 +1,87 @@
+---
+title: "Basespace automator"
+author: "Genomics Center at Clalit"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    theme: united
+    toc: true
+    toc_float: false
+---
+
+```{r initial_setup}
+bs_analysis_folder<-'/media/SSD/Bioinformatics/Projects/basespace_automation_202206/'
+
+```
+
+```{r render_report,eval=F,echo=F}
+library(rmarkdown)
+render('/media/SSD/Bioinformatics/Projects/basespace_automation_202206/src/basespace_automator.Rmd', 
+       output_dir = bs_analysis_folder,
+       output_file = glue('{bs_analysis_folder}/basespace_automation_report.{Sys.Date()}.html'),
+       quiet = F)
+```
+
+```{r setup, include=FALSE,warning=F,message=F}
+
+project_dir<-hpo_analysis_folder
+knitr::opts_knit$set(root.dir=project_dir)
+knitr::opts_chunk$set(echo = F)
+library(ProjectTemplate)
+setwd(project_dir)
+load.project()
+
+main_output_folder<-glue('./output/basespace_results_{Sys.Date()}')
+if (!dir.exists(main_output_folder)){dir.create(main_output_folder)}
+
+```
+
+```{r run_project}
+# Set project name
+project_name<-'NGS016_qc_run'
+# Check if project exists
+all_projects<-get_all_projects()
+if (project_name %in% all_projects$Name){
+  project_details<-all_projects%>%filter(Name==project_name)
+  project_id<-project_details$Id
+  message(glue('Project {project_name} exists. Its ID is {project_id}'))
+}else{
+  project_details<-create_project(project_name)
+  project_id<-project_details$Id
+  message(glue('Project {project_name} was did not exist. Created it with ID {project_id}'))
+}
+# if you want to get all the biosamples for a given run
+experiment_name<-'NGS016_BGU_2022_09_12'
+run_id<-get_run_id_by_name(experiment_name)
+run_biosamples<-get_run_biosamples(run_id)
+# now update a run sheet with the collected biosamples
+
+# A few notes regarding the run sheet
+# make sure the run has a new app-session-name
+run_sheet<-'/media/SSD/Bioinformatics/Projects/basespace_automation_202206/data/run_sheets/ngs015_run_sheet.csv'
+run_attributes<-parse_run_sheet(run_sheet,attributes_list=list())
+# now verify every bs has a fastq file
+# remember, if you transfer a project to a different workgroup the biosample remains in the same workgroup but you cant run anything on it..
+bs_fqs_list<-get_biosamples_fastqs_from_attributes(run_attributes)
+# get the missing biosamples names
+all_biosamples<-get_all_biosamples()
+biosamples_without_fqs<-data.frame(Id=as.integer(names(bs_fqs_list)[which(lapply(bs_fqs_list,nrow)==0)]))
+biosamples_without_fqs<-biosamples_without_fqs%>%left_join(all_biosamples)
+message(glue('These biosamples have no fastq files: {paste0(biosamples_without_fqs%>%pull(BioSampleName),collapse=", ")}'))
+# remove these biosamples from the run_attributes
+biosamples_without_fqs_ids<-biosamples_without_fqs$Id
+run_attributes_fixed<-remove_biosample_id_from_run_attributes(biosample_ids_to_remove = biosamples_without_fqs_ids,run_attributes)
+
+run_dragen_enrichment(run_attributes_fixed)
+### !!!! Please note, sometimes it takes alot of time for the run to start and the BS disconnects. it doesnt mean  the run wont go.. need to check whether it is still in the queued status !!!
+
+
+```
+
+# Run enrichment for all biosamples in run
+
+```{r run_enrichemnt_for_all_biosamples_in_run}
+# step 1. get all the run biosamples (you can enter either id or run name)
+get_run_biosamples(run_experiment_name = 'NGS003_2022_05_23')%>%select(BioSampleName)
+
+```
