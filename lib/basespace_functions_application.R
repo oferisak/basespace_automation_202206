@@ -28,11 +28,14 @@ parse_run_sheet<-function(run_sheet_file,attributes_list=list()){
   return(attributes)
 }
 
-launch_application<-function(run_attributes,app_name,app_version){
+launch_application<-function(run_attributes,app_name,app_version,command_line_args=NA){
   cmd_attributes<-paste0('-o ',run_attributes%>%pull(attribute),":",run_attributes%>%pull(value),collapse=' ')
   run_command<-paste0(glue('bs launch application -n "{app_name}" --app-version {app_version} '),
                       cmd_attributes,
                       collapse=' ')
+  if (!is.na(command_line_args)){
+    run_command<-paste0(c(run_command,command_line_args),collapse=' ')
+  }
   message(glue('Running {app_name} with command: {run_command}'))
   system(run_command)
 }
@@ -47,6 +50,12 @@ get_application_options<-function(app_id,argument_name=NA){
   }else{return(all_options)}
 }
 
+get_all_applications<-function(){
+  applications_text<-system('bs application list -f csv',intern=T)
+  return(read.table(text=applications_text,sep=',',header = T))
+}
+
+#### DRAGEN Enrichment ####
 generate_dragen_enrichment_runsheet <- function(run_sheet_name_prefix,
                                                 app_session_name,
                                                 project_id,
@@ -81,6 +90,40 @@ generate_dragen_enrichment_runsheet <- function(run_sheet_name_prefix,
   write(run_sheet,file = glue('./data/run_sheets/{run_sheet_name_prefix}.dragen_enrichment.csv'))
 }
 
+#### DRAGEN Germline ####
+generate_dragen_germline_runsheet <- function(run_sheet_name_prefix,
+                                                app_session_name,
+                                                project_id,
+                                                ht_ref = 'hg19_altmaskedv2-cnv-hla-graph-anchored.v8',
+                                                cnv_checkbox =1,
+                                                cnv_segmentation_mode='slm',
+                                                sv_checkbox = 1,
+                                                eh_checkbox = 1,
+                                                input_list_sample_ids = c(),
+                                                validate_input_sample_ids = T) {
+  
+  app_session_name<-glue('app-session-name\t{app_session_name}')
+  project_id<-glue('project-id\t{project_id}')
+  ht_ref<-glue('ht-ref\t{ht_ref}')
+  cnv_checkbox<-glue('cnv_checkbox\t{cnv_checkbox}')
+  cnv_segmentation_mode<-glue('cnv_segmentation_mode\t{cnv_segmentation_mode}')
+  sv_checkbox<-glue('sv_checkbox\t{sv_checkbox}')
+  eh_checkbox<-glue('eh_checkbox\t{eh_checkbox}')
+  input_list_sample_ids<-paste0('input_list.sample-id\t',input_list_sample_ids,collapse='\n')
+  run_sheet<-paste0(c(app_session_name,
+                      project_id,
+                      ht_ref,
+                      cnv_checkbox,
+                      cnv_segmentation_mode,
+                      sv_checkbox,
+                      eh_checkbox,
+                      input_list_sample_ids),
+                    collapse='\n')
+  write(run_sheet,file = glue('./data/run_sheets/{run_sheet_name_prefix}.dragen_germline.csv'))
+}
+
+
+#### DRAGEN PopGen ####
 generate_dragen_popgen_runsheet <- function(run_sheet_name_prefix,
                                            app_session_name,
                                            project_id,
@@ -96,7 +139,9 @@ generate_dragen_popgen_runsheet <- function(run_sheet_name_prefix,
   pipeline_mode<-glue('pipeline-mode\t{pipeline_mode}')
   output_file_prefix<-glue('output-file-prefix\t{output_file_prefix}')
   basespace_disclaimer<-glue('basespace-labs-disclaimer\tAccepted')
-  #source_datasets<-glue('source-datasets\t{paste0(source_datasets,collapse=",")}')
+  #gg_remove_nonref<-'"arbitraty:--gg-remove-nonref\ttrue'
+  commandline_disclaimer<-'commandline-disclaimer\ttrue'
+
   run_sheet<-paste0(c(app_session_name,
                       project_id,
                       ht_ref,
@@ -104,6 +149,8 @@ generate_dragen_popgen_runsheet <- function(run_sheet_name_prefix,
                       source_projects,
                       #source_datasets,
                       output_file_prefix,
+                      #gg_remove_nonref,
+                      commandline_disclaimer,
                       basespace_disclaimer),
                     collapse='\n')
   output_file<-glue('./data/run_sheets/{run_sheet_name_prefix}.dragen_popgen.csv')

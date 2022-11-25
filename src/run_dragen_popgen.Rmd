@@ -33,19 +33,24 @@ if (!dir.exists(main_output_folder)){dir.create(main_output_folder)}
 app_name<-'DRAGEN PopGen'
 app_version<-'3.10.5'
 
-workgroup <-'BGU - collaborative'
+workgroup <-'Genoox - collaborative'
 verify_workgroup(workgroup)
-run_sheet_name_prefix<-'popgen_bgu_20221027'
-app_session_name<-'popgen_bgu_20221027'
+run_sheet_name_prefix<-'bgu_wes_idt_run_023'
+app_session_name<-run_sheet_name_prefix
 ht_ref<-'hg38'
 pipeline_mode<-'projects'
-project_name<-'popgen_bgu_20221027'
+project_name<-run_sheet_name_prefix
 project_name<-stringr::str_replace(project_name,'\\s+','_')
 
 project_id<-get_project_id_by_name(project_name,create_project_if_not_available = F)
 
-source_projects<-get_project_ids_from_biosamples_sheet('./data/biosamples_sheets/bgu_collaborative_2022-10-27.csv')
-source_projects<-paste0(source_projects,collapse=',')
+# Option 1: Collect projects from biosamples
+# source_projects<-get_project_ids_from_biosamples_sheet('./data/biosamples_sheets/bgu_collaborative_2022-10-27.csv')
+# source_projects<-paste0(source_projects,collapse=',')
+
+# Option 2: Choose a project with all the samples
+source_projects<-'20061048'
+
 # all_datasets<-get_all_datasets()
 # project_datasets<-all_datasets%>%filter(Project.Name==project_name)%>%pull(Name)
 
@@ -63,7 +68,8 @@ run_attributes<-parse_run_sheet(glue('./data/run_sheets/{run_sheet_name_prefix}.
 # now verify every bs has a fastq file
 launch_application(app_name = app_name,
                    app_version = app_version,
-                   run_attributes = run_attributes)
+                   run_attributes = run_attributes,
+                   command_line_args = '-o "arbitrary:--gg-remove-nonref true"')
 ### !!!! Please note, sometimes it takes alot of time for the run to start and the BS disconnects. it doesnt mean  the run wont go.. need to check whether it is still in the queued status !!!
 
 

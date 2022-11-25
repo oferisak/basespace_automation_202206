@@ -1,5 +1,5 @@
 ---
-title: "Run DRAGEN enrichment"
+title: "Run DRAGEN germline"
 author: "Genomics Center at Clalit"
 date: "`r Sys.Date()`"
 output: 
@@ -9,11 +9,9 @@ output:
     toc_float: false
 ---
 
-In order to run DRAGEN enrichment you need to prepare:
+In order to run DRAGEN germline you need to prepare:
   - input biosample ids sheet - a sheet with the biosample IDs - in order to get it you can use the pull_workgroup_biosamples.Rmd script to produce a file with ALL the biosamples (and whether they have fastq files). You can then easily select the sample you want to run and make a new sample sheet. 
 
-  - target bed file - this is a workgroup specific ID. you need to log in to the workgroup cli and search for the file id (using appsession content)
-  
   - project name - if it doesnt exist, it will be generated
   - max number of samples - since running too many samples together causes BS CLI it to crash
 
@@ -40,24 +38,15 @@ main_output_folder<-glue('./output/basespace_results_{Sys.Date()}')
 
 ```{r run_attributes}
 # Set project name
-app_name<-'DRAGEN Enrichment'
+app_name<-'DRAGEN Germline'
 app_version<-'4.0.3'
-max_num_of_samples_per_run<-10
+max_num_of_samples_per_run<-5
 
-workgroup <-'Genoox - collaborative'
+workgroup <-'Sequencing Center'
 verify_workgroup(workgroup)
-run_sheet_name_prefix<-'bgu_wes_idt_run_023'
+run_sheet_name_prefix<-'harvard_wgs_idt_hg19_20221113'
 app_session_name<-run_sheet_name_prefix
-ht_ref<-'hg38_altmaskedv2-cnv-hla-graph-anchored.v8'
-
-# Set target file
-### in order to find the file id you need to get the appsession conent (in the right workgroup!) ###
-# idt hg38 target - Sequencing center
-#target_bed_id<-'818709364'
-# idt hg38 target - Genoox - collaborative
-target_bed_id<-'959954550'
-# idt hg38 target - BGU - collaborative
-#target_bed_id<-'742351633'
+ht_ref<-'hg19_altmaskedv2-cnv-hla-graph-anchored.v8'
 
 project_name<-run_sheet_name_prefix
 project_name<-stringr::str_replace(project_name,'\\s+','_')
@@ -65,10 +54,10 @@ project_name<-stringr::str_replace(project_name,'\\s+','_')
 project_id<-get_project_id_by_name(project_name,create_project_if_not_available = T)
 ```
 
-# Option 1: Run DRAGEN Enrichment using an input sample sheet
+# Option 1: Run DRAGEN Germline using an input sample sheet
 
 ```{r run_biosample_list}
-input_biosample_list_sheet<-readr::read_delim(glue('./data/input_biosample_sheets/{run_sheet_name_prefix}.csv'),delim = '\t')
+input_biosample_list_sheet<-readr::read_delim('./data/input_biosample_sheets/harvard_wgs_idt_hg19_20221113.csv',delim = '\t')
 input_list_sample_ids<-input_biosample_list_sheet%>%pull(BioSampleName)
 
 sample_chunks<-split(input_list_sample_ids,1:max_num_of_samples_per_run)
@@ -78,19 +67,12 @@ for (chunk in sample_chunks){
   chunk_sample_ids<-chunk
   message(glue('Running chunk {chunk_num} with: {paste0(chunk_sample_ids,collapse=",")}'))
   chunk_run_sheet_prefix<-glue('{run_sheet_name_prefix}_{chunk_num}')
-  generate_dragen_enrichment_runsheet(run_sheet_name_prefix = chunk_run_sheet_prefix,
-                                      app_session_name = app_session_name,
-                                      project_id = project_id,
-                                      ht_ref = ht_ref,
-                                      fixed_bed = 'custom',
-                                      target_bed_id = target_bed_id,
-                                      vc_target_bed_padding = 50,
-                                      high_coverage = 1,
-                                      lowpass = 1,
-                                      input_list_sample_ids = chunk_sample_ids
-                                      )
-  
-  run_attributes<-parse_run_sheet(glue('./data/run_sheets/{chunk_run_sheet_prefix}.dragen_enrichment.csv'),attributes_list=list())
+  generate_dragen_germline_runsheet(run_sheet_name_prefix = chunk_run_sheet_prefix,
+                                    app_session_name = app_session_name,
+                                    project_id = project_id,
+                                    ht_ref = ht_ref,
+                                    input_list_sample_ids = chunk_sample_ids)
+  run_attributes<-parse_run_sheet(glue('./data/run_sheets/{chunk_run_sheet_prefix}.dragen_germline.csv'),attributes_list=list())
   # now verify every bs has a fastq file
   #run_dragen_enrichment(run_attributes)
   launch_application(app_name = app_name,
